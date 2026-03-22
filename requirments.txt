@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+httpx
+textstat
+pydantic
+gtts
+python-multipart
+composio-core
+python-dotenv
+pypdf
+python-docx
