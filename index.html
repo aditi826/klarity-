@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ClearRead — Text Simplifier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({ startOnLoad: false, theme: 'neutral' });</script>
+<style>
+:root {
+  --cream:      #F5F0E8;
+  --cream-dim:  #EDE8DC;
+  --cream-deep: #DDD6C8;
+  --ink:        #2C2416;
+  --ink-soft:   #5C5040;
+  --amber:      #D4820A;
+  --amber-lit:  #F0A030;
+  --amber-pale: #FFF3D8;
+  --forest:     #2D5016;
+  --forest-lit: #4A8228;
+  --rose:       #C0392B;
+  --blue:       #1A5E8A;
+  --blue-pale:  #E8F4FD;
+  --line-h:     2.0;
+  --letter-s:   0.04em;
+  --r:          14px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Atkinson Hyperlegible', Georgia, serif;
+  background: var(--cream);
+  color: var(--ink);
+  min-height: 100vh;
+  letter-spacing: var(--letter-s);
+  line-height: var(--line-h);
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 0; opacity: .6;
+}
+.wrap { max-width: 900px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; }
+
+/* ── Header ── */
+header {
+  padding: 52px 0 32px;
+  display: flex; align-items: flex-end; justify-content: space-between;
+  border-bottom: 2px solid var(--cream-deep);
+  margin-bottom: 32px;
+}
+.logo { display: flex; align-items: center; gap: 14px; }
+.logo-mark {
+  width: 48px; height: 48px;
+  background: var(--amber); border-radius: 12px;
+  display: grid; place-items: center;
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px;
+  color: #fff; letter-spacing: -1px; box-shadow: 3px 3px 0 var(--ink);
+}
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(28px, 5vw, 40px); font-weight: 800;
+  color: var(--ink); letter-spacing: -1px; line-height: 1;
+}
+h1 span { color: var(--amber); }
+.tagline { font-size: 13px; color: var(--ink-soft); letter-spacing: 0.08em; text-transform: uppercase; }
+.status-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 14px; border-radius: 99px;
+  background: var(--cream-dim); border: 1.5px solid var(--cream-deep);
+  font-size: 12px; color: var(--ink-soft); letter-spacing: 0.05em;
+  cursor: pointer; transition: all .2s;
+}
+.status-pill:hover { border-color: var(--amber); color: var(--amber); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; transition: background .4s; }
+.dot.ok  { background: var(--forest-lit); box-shadow: 0 0 6px var(--forest-lit); }
+.dot.err { background: var(--rose); }
+
+/* ── Cards ── */
+.card {
+  background: #fff; border: 2px solid var(--cream-deep);
+  border-radius: var(--r); padding: 28px; margin-bottom: 24px;
+  box-shadow: 4px 4px 0 var(--cream-deep);
+}
+.card-label {
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft);
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.card-label::after { content: ''; flex: 1; height: 1px; background: var(--cream-deep); }
+
+/* ── Textarea ── */
+textarea {
+  width: 100%; min-height: 180px;
+  font-family: 'Atkinson Hyperlegible', serif; font-size: 16px;
+  line-height: 1.8; letter-spacing: 0.03em; color: var(--ink);
+  background: var(--cream); border: 2px solid var(--cream-deep);
+  border-radius: 10px; padding: 16px 18px; resize: vertical; outline: none;
+  transition: border-color .2s;
+}
+textarea:focus { border-color: var(--amber); }
+textarea::placeholder { color: #b0a898; }
+
+/* ── Live score bar (below textarea) ── */
+.live-score-bar {
+  display: flex; align-items: center; gap: 14px; margin-top: 12px;
+  padding: 12px 16px; border-radius: 10px;
+  background: var(--cream-dim); border: 1.5px solid var(--cream-deep);
+  font-size: 13px; color: var(--ink-soft);
+  transition: opacity .3s;
+  opacity: 0;
+}
+.live-score-bar.visible { opacity: 1; }
+.live-label { font-weight: 700; }
+.live-gauge {
+  flex: 1; height: 8px; background: var(--cream-deep);
+  border-radius: 99px; overflow: hidden;
+}
+.live-gauge-fill {
+  height: 100%; border-radius: 99px;
+  transition: width .5s ease, background .5s ease;
+  width: 0%;
+}
+.live-grade { margin-left: auto; font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; }
+
+/* ── Controls ── */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px; }
+.mode-group {
+  display: flex; gap: 0; border-radius: 8px; overflow: hidden;
+  border: 2px solid var(--cream-deep);
+}
+.mode-btn {
+  padding: 8px 16px; font-family: 'Atkinson Hyperlegible', serif;
+  font-size: 13px; font-weight: 700; background: var(--cream); border: none;
+  cursor: pointer; color: var(--ink-soft); letter-spacing: 0.04em; transition: all .15s;
+}
+.mode-btn:not(:last-child) { border-right: 2px solid var(--cream-deep); }
+.mode-btn.active { background: var(--ink); color: var(--cream); }
+.btn-simplify {
+  margin-left: auto; padding: 12px 32px;
+  font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700;
+  background: var(--amber); color: #fff;
+  border: 2px solid var(--ink); border-radius: 10px; cursor: pointer;
+  letter-spacing: 0.05em; box-shadow: 3px 3px 0 var(--ink); transition: all .15s;
+  display: flex; align-items: center; gap: 9px;
+}
+.btn-simplify:hover:not(:disabled) { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--ink); }
+.btn-simplify:active:not(:disabled) { transform: translate(1px,1px); box-shadow: 2px 2px 0 var(--ink); }
+.btn-simplify:disabled { opacity: .6; cursor: not-allowed; transform: none; box-shadow: 3px 3px 0 var(--ink); }
+
+/* Dyslexia toggle */
+.toggle-row { display: flex; align-items: center; gap: 15px; margin-top: 16px; }
+.toggle-label { font-size: 13px; color: var(--ink-soft); }
+.toggle { position: relative; width: 44px; height: 24px; cursor: pointer; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; inset: 0;
+  background: var(--cream-deep); border-radius: 99px; transition: background .2s;
+  border: 2px solid var(--cream-deep);
+}
+.slider::before {
+  content: ''; position: absolute;
+  width: 16px; height: 16px; left: 3px; bottom: 2px;
+  background: var(--ink-soft); border-radius: 50%; transition: transform .2s, background .2s;
+}
+.toggle input:checked + .slider { background: var(--amber); border-color: var(--amber); }
+.toggle input:checked + .slider::before { transform: translateX(20px); background: #fff; }
+
+/* ── Privacy bar ── */
+.privacy-bar {
+  background: var(--cream-dim); border: 1.5px solid var(--cream-deep);
+  border-radius: 10px; padding: 12px 18px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: var(--ink-soft); margin-bottom: 28px;
+}
+.privacy-bar svg { flex-shrink: 0; color: var(--forest-lit); }
+
+/* ── Loader ── */
+.loader {
+  display: none; flex-direction: column; align-items: center; gap: 16px;
+  padding: 40px; text-align: center; color: var(--ink-soft); font-size: 15px;
+}
+.loader.visible { display: flex; }
+.dots { display: flex; gap: 8px; }
+.dots span {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--amber);
+  animation: bounce 1.2s infinite ease-in-out;
+}
+.dots span:nth-child(2) { animation-delay: .2s; }
+.dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes bounce {
+  0%,80%,100% { transform: scale(0.6); opacity:.4; }
+  40% { transform: scale(1); opacity:1; }
+}
+
+/* ── Readability comparison panel ── */
+#readability-panel { display: none; }
+#readability-panel.visible { display: block; }
+
+.readability-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+}
+@media (max-width: 620px) { .readability-grid { grid-template-columns: 1fr; } }
+
+.score-card {
+  border-radius: 12px; padding: 20px;
+  border: 2px solid var(--cream-deep);
+}
+.score-card.before { background: #FFF8F5; border-color: #E8CFC0; }
+.score-card.after  { background: #F2FBF0; border-color: #B8DFB0; }
+
+.score-card-title {
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 14px;
+}
+.score-card.before .score-card-title { color: #8B4513; }
+.score-card.after  .score-card-title { color: var(--forest); }
+
+/* Flesch gauge */
+.flesch-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.flesch-score {
+  font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 800;
+  line-height: 1; min-width: 72px;
+}
+.flesch-meta { flex: 1; }
+.flesch-label {
+  font-size: 14px; font-weight: 700; margin-bottom: 4px;
+}
+.flesch-bar {
+  height: 8px; background: var(--cream-deep);
+  border-radius: 99px; overflow: hidden; margin-top: 6px;
+}
+.flesch-fill {
+  height: 100%; border-radius: 99px;
+  transition: width .8s cubic-bezier(.34,1.2,.64,1);
+}
+
+/* Metrics grid inside each score card */
+.metrics-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; margin-top: 12px;
+}
+.metric-item {
+  background: rgba(255,255,255,0.7);
+  border-radius: 8px; padding: 8px 10px;
+  border: 1px solid var(--cream-deep);
+}
+.metric-name {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--ink-soft); margin-bottom: 2px;
+}
+.metric-val {
+  font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700;
+  color: var(--ink); line-height: 1.2;
+}
+.metric-sub { font-size: 10px; color: var(--ink-soft); }
+
+/* ── Improvement ribbon ── */
+.improvement-bar {
+  background: linear-gradient(135deg, var(--forest) 0%, var(--forest-lit) 100%);
+  color: #fff; border-radius: 10px; padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.imp-stat { text-align: center; }
+.imp-num {
+  font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 800; line-height: 1;
+  display: block;
+}
+.imp-desc { font-size: 11px; opacity: .8; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Score scale legend */
+.scale-legend {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-top: 12px;
+}
+.scale-seg {
+  flex: 1; min-width: 50px; height: 6px; border-radius: 3px;
+}
+
+/* ── Result panel ── */
+#result-panel { display: none; }
+#result-panel.visible { display: block; }
+
+.summary-box {
+  background: var(--amber-pale); border: 2px solid var(--amber);
+  border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
+  font-size: 17px; line-height: 1.7;
+  cursor: pointer; transition: all .15s;
+}
+.summary-box:hover { background: #fff8e1; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(212, 130, 10, 0.1); }
+.summary-box.playing { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(212, 130, 10, 0.2); background: #fff; }
+.summary-box strong {
+  display: block; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--amber); margin-bottom: 6px;
+}
+.bullet-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.bullet-item {
+  display: flex; align-items: flex-start; gap: 14px; padding: 14px 18px;
+  background: var(--cream); border-radius: 10px; border: 1.5px solid var(--cream-deep);
+  font-size: 17px; line-height: var(--line-h); cursor: pointer; transition: all .15s;
+}
+.bullet-item:hover { border-color: var(--amber); background: #fff8e1; transform: translateY(-1px); }
+.bullet-item.playing { border-color: var(--amber); background: #fff !important; box-shadow: 0 0 0 3px rgba(212, 130, 10, 0.2); }
+.bullet-item.highlight-line { background: var(--amber-pale) !important; border-color: var(--amber) !important; }
+body.dyslexia-mode .bullet-item { font-size: 20px; line-height: 2.4; padding: 18px 22px; }
+body.dyslexia-mode textarea { font-size: 19px; line-height: 2.2; }
+body.dyslexia-mode .summary-box { font-size: 20px; }
+.bullet-num {
+  min-width: 28px; height: 28px; background: var(--ink); color: var(--cream);
+  border-radius: 6px; display: grid; place-items: center;
+  font-size: 12px; font-weight: 700; font-family: 'Syne', sans-serif; margin-top: 2px;
+}
+.audio-btn {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  color: var(--ink-soft); padding: 4px; border-radius: 6px; transition: color .15s; flex-shrink: 0;
+}
+.audio-btn:hover { color: var(--amber); }
+
+.meta-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  margin-top: 20px; padding-top: 16px;
+  border-top: 1.5px solid var(--cream-deep); font-size: 12px; color: var(--ink-soft);
+}
+.badge {
+  padding: 4px 10px; border-radius: 6px;
+  background: var(--cream-dim); border: 1.5px solid var(--cream-deep);
+  font-weight: 700; letter-spacing: 0.06em;
+}
+.badge.level { border-color: var(--forest-lit); color: var(--forest); }
+.btn-audio-all {
+  margin-left: auto; display: flex; align-items: center; gap: 7px;
+  padding: 8px 18px; border-radius: 8px;
+  background: var(--cream); border: 2px solid var(--cream-deep);
+  font-family: 'Atkinson Hyperlegible', serif; font-size: 13px; font-weight: 700;
+  cursor: pointer; box-shadow: 2px 2px 0 var(--cream-deep); transition: all .15s;
+}
+.btn-audio-all:hover { border-color: var(--amber); box-shadow: 2px 2px 0 var(--amber); }
+.btn-clear {
+  padding: 8px 18px; border-radius: 8px; background: none;
+  border: 2px solid var(--cream-deep);
+  font-family: 'Atkinson Hyperlegible', serif; font-size: 13px;
+  color: var(--ink-soft); cursor: pointer; transition: all .15s;
+}
+.btn-clear:hover { border-color: var(--rose); color: var(--rose); }
+
+/* ── Settings Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(44, 36, 22, 0.6);
+  backdrop-filter: blur(4px); z-index: 1000;
+  display: none; place-items: center; padding: 20px;
+}
+.modal-overlay.visible { display: grid; }
+.modal {
+  background: var(--cream); border: 2px solid var(--ink);
+  border-radius: var(--r); padding: 32px; width: 100%; max-width: 450px;
+  box-shadow: 10px 10px 0 var(--ink); position: relative;
+}
+.modal-close {
+  position: absolute; top: 16px; right: 16px; background: none; border: none;
+  font-size: 24px; cursor: pointer; color: var(--ink-soft);
+}
+.input-group { margin-bottom: 20px; }
+.input-group label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--ink-soft); }
+.input-group input {
+  width: 100%; padding: 12px; border: 2px solid var(--cream-deep);
+  border-radius: 8px; font-family: inherit; outline: none;
+}
+.input-group input:focus { border-color: var(--amber); }
+
+/* ── Word Map ── */
+.map-box {
+  background: #fff; border: 2px solid var(--cream-deep); border-radius: 10px;
+  padding: 20px; margin-top: 24px; overflow: hidden;
+}
+.map-box strong {
+  display: block; font-size: 13px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--blue); margin-bottom: 16px;
+  text-align: center; border-bottom: 2px solid var(--blue-pale); padding-bottom: 8px;
+}
+.mermaid { background: #fff; border-radius: 6px; display: flex; justify-content: center; }
+
+.header-actions { display: flex; gap: 12px; align-items: center; }
+.btn-icon {
+  background: var(--cream-dim); border: 1.5px solid var(--cream-deep);
+  width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;
+  cursor: pointer; transition: all .2s; color: var(--ink-soft);
+}
+.btn-icon:hover { border-color: var(--amber); color: var(--amber); }
+
+#fetchMailBtn {
+  background: var(--blue-pale); color: var(--blue); border: 1.5px solid var(--blue);
+  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all .2s;
+}
+#fetchMailBtn:hover { background: var(--blue); color: #fff; }
+
+.btn-upload {
+  background: var(--cream-dim); border: 1.5px solid var(--cream-deep);
+  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all .2s;
+  color: var(--ink-soft);
+}
+.btn-upload:hover { border-color: var(--amber); color: var(--amber); }
+
+.source-tag {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  background: var(--blue-pale); color: var(--blue);
+  padding: 2px 6px; border-radius: 4px; margin-top: 4px;
+  display: inline-block; letter-spacing: 0.02em;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-mark">K</div>
+      <div>
+        <h1><span>KWALITY</span></h1>
+        <div class="tagline">Private · Local · Accessible</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="fetchMailBtn" onclick="fetchMail()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+        </svg>
+        Fetch Mail
+      </button>
+      <input type="file" id="docUpload" style="display:none" onchange="handleFileUpload(this)" accept=".pdf,.docx,.txt">
+      <button class="btn-upload" onclick="document.getElementById('docUpload').click()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.82-2.82l8.49-8.48"/>
+        </svg>
+        Upload
+      </button>
+      <button class="btn-icon" onclick="toggleModal(true)" title="Settings">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button class="status-pill" id="statusPill" onclick="checkHealth()">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Check connection</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Privacy bar -->
+  <div class="privacy-bar">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+    <span> <strong> NO DATA STORAGE AND MAKES IT MORE PRIVATE AND RELIABLE </strong></span>
+  </div>
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="card-label">Paste your text</div>
+    <textarea id="inputText"
+      placeholder="Paste an email, document paragraph, or any hard-to-read text here…"
+      spellcheck="false"
+      oninput="onTextInput()"></textarea>
+
+    <!-- Live readability score bar -->
+    <div class="live-score-bar" id="liveBar">
+      <span class="live-label" id="liveLabel">—</span>
+      <div class="live-gauge"><div class="live-gauge-fill" id="liveGaugeFill"></div></div>
+      <span class="live-grade" id="liveGrade"></span>
+      <span style="font-size:11px;color:var(--ink-soft)">Flesch</span>
+    </div>
+
+    <div class="controls">
+      <div>
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;font-weight:700;">Simplify for</div>
+        <div class="mode-group">
+          <button class="mode-btn active" data-mode="standard">Standard</button>
+          <button class="mode-btn" data-mode="simple">Simple</button>
+          <button class="mode-btn" data-mode="eli5">ELI5</button>
+        </div>
+      </div>
+      <button class="btn-simplify" id="simplifyBtn" onclick="simplify()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        Simplify
+      </button>
+    </div>
+
+    <div class="toggle-row">
+      <label class="toggle">
+        <input type="checkbox" id="dyslexiaToggle" onchange="toggleDyslexia(this)">
+        <span class="slider"></span>
+      </label>
+      <span class="toggle-label">Dyslexia-friendly mode (larger text, extra spacing)</span>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div class="loader" id="loader">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <span>Simplifying with local AI…</span>
+  </div>
+
+  <!-- ── Readability comparison ── -->
+  <div id="readability-panel" class="card">
+    <div class="card-label">Readability analysis</div>
+
+    <!-- Improvement ribbon -->
+    <div class="improvement-bar" id="improvementBar">
+      <div class="imp-stat">
+        <span class="imp-num" id="impFlesch">+0</span>
+        <span class="imp-desc">Flesch points easier</span>
+      </div>
+      <div class="imp-stat">
+        <span class="imp-num" id="impGrade">−0</span>
+        <span class="imp-desc">Grade levels reduced</span>
+      </div>
+      <div class="imp-stat">
+        <span class="imp-num" id="impWords">−0</span>
+        <span class="imp-desc">Difficult words removed</span>
+      </div>
+      <div class="imp-stat">
+        <span class="imp-num" id="impSentLen">−0</span>
+        <span class="imp-desc">Avg sentence length</span>
+      </div>
+    </div>
+
+    <div class="readability-grid">
+      <!-- Before -->
+      <div class="score-card before">
+        <div class="score-card-title">📄 Original text</div>
+        <div class="flesch-row">
+          <div class="flesch-score" id="bFlesch">—</div>
+          <div class="flesch-meta">
+            <div class="flesch-label" id="bLabel">—</div>
+            <div style="font-size:11px;color:var(--ink-soft)">Flesch Reading Ease (0–100)</div>
+            <div class="flesch-bar"><div class="flesch-fill" id="bBar"></div></div>
+          </div>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric-item">
+            <div class="metric-name">FK Grade</div>
+            <div class="metric-val" id="bGrade">—</div>
+            <div class="metric-sub">School grade level</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-name">Gunning Fog</div>
+            <div class="metric-val" id="bFog">—</div>
+            <div class="metric-sub">Education years</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-name">Difficult words</div>
+            <div class="metric-val" id="bDiff">—</div>
+            <div class="metric-sub">Unfamiliar words</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-name">Avg sent. length</div>
+            <div class="metric-val" id="bSentLen">—</div>
+            <div class="metric-sub">Words per sentence</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-name">Avg syllables</div>
+            <div class="metric-val" id="bSyl">—</div>
+            <div class="metric-sub">Per word</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-name">Coleman-Liau</div>
+            <div class="metric-val" id="bColeman">—</div>
+            <div class="metric-sub">Grade level</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- After -->
+      <div class="score-card after">
+        <div class="score-card-title">✅ Simplified text</div>
+        <div class="flesch-row">
+          <div class="flesch-score" id="aFlesch">—</div>
+          <div class="flesch-meta">
+            <div class="flesch-label" id="aLabel">—</div>
+            <div style="font-size:11px;color:var(--ink-soft)">Flesch Reading Ease (0–100)</div>
+            <div class="flesch-bar"><div class="flesch-fill" id="aBar"></div></div>
+          </div>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric-item">
+            <div class="metric-name">FK Grade</div>
+            <div class="metric-val" id="aGrade">—</div>
+            <div class="metric-sub">School grade level</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-name">Gunning Fog</div>
+            <div class="metric-val" id="aFog">—</div>
+            <div class="metric-sub">Education years</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-name">Difficult words</div>
+            <div class="metric-val" id="aDiff">—</div>
+            <div class="metric-sub">Unfamiliar words</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-name">Avg sent. length</div>
+            <div class="metric-val" id="aSentLen">—</div>
+            <div class="metric-sub">Words per sentence</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-name">Avg syllables</div>
+            <div class="metric-val" id="aSyl">—</div>
+            <div class="metric-sub">Per word</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-name">Coleman-Liau</div>
+            <div class="metric-val" id="aColeman">—</div>
+            <div class="metric-sub">Grade level</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scale legend -->
+    <div style="margin-top:16px;font-size:11px;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;">
+      Flesch Reading Ease scale
+    </div>
+    <div class="scale-legend">
+      <div class="scale-seg" style="background:#8B0000" title="Very Difficult (0–29)"></div>
+      <div class="scale-seg" style="background:#C0392B" title="Difficult (30–49)"></div>
+      <div class="scale-seg" style="background:#E07B39" title="Fairly Difficult (50–59)"></div>
+      <div class="scale-seg" style="background:#D4A017" title="Standard (60–69)"></div>
+      <div class="scale-seg" style="background:#4AAB6E" title="Easy (70–89)"></div>
+      <div class="scale-seg" style="background:#2D8B57" title="Very Easy (90–100)"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:4px;">
+      <span>Very Difficult</span><span>Standard</span><span>Very Easy</span>
+    </div>
+  </div>
+
+  <!-- Results panel -->
+  <div id="result-panel" class="card">
+    <div class="card-label">Simplified result</div>
+
+    <div class="summary-box" id="summaryBox">
+      <strong>Summary</strong>
+      <span id="summaryText"></span>
+    </div>
+
+    <ul class="bullet-list" id="bulletList"></ul>
+
+    <div class="map-box" id="mapBox" style="display:none;">
+      <strong>Conceptual Word Map</strong>
+      <div id="mermaidContainer" class="mermaid"></div>
+    </div>
+
+    <div class="meta-row">
+      <span>AI reading level estimate:</span>
+      <span class="badge level" id="levelBadge"></span>
+      <span id="bulletCount"></span>
+      <button class="btn-clear" onclick="clearAll()">✕ Clear</button>
+      <button class="btn-audio-all" onclick="speakAll()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+        Read all aloud
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <button class="modal-close" onclick="toggleModal(false)">&times;</button>
+    <div class="card-label">User Settings</div>
+    <div class="input-group">
+      <label for="emailInput">Your Email Address</label>
+      <input type="email" id="emailInput" placeholder="name@example.com">
+    </div>
+    <div class="input-group">
+      <label for="imapInput">IMAP Server</label>
+      <input type="text" id="imapInput" placeholder="imap.gmail.com">
+    </div>
+    <div class="input-group">
+      <label for="passwordInput">App Password / Token</label>
+      <input type="password" id="passwordInput" placeholder="••••••••••••••••">
+      <p style="font-size: 11px; color: var(--ink-soft); margin-top: 8px;">
+        For Gmail, use an <strong>App Password</strong>. These are stored locally in your browser.
+      </p>
+    </div>
+    <div id="gmailOAuthSection" style="padding: 12px; border: 1px dashed var(--ink-soft); border-radius: 8px; margin-top: 12px; text-align: center;">
+      <p id="gmailStatusText" style="font-size: 13px; margin-bottom: 8px;">Gmail: Disconnected</p>
+      <button id="connectGmailBtn" class="btn-simplify" style="width: 100%; padding: 8px; font-size: 12px; justify-content: center;" onclick="connectGmail()">
+        Connect Gmail (Passwordless)
+      </button>
+    </div>
+    
+    <button class="btn-simplify" style="width: 100%; margin-top: 12px; justify-content: center;" onclick="saveSettings()">
+      Save All Settings
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:8000';
+let currentMode = 'standard';
+let liveDebounce = null;
+let userEmail = localStorage.getItem('klarity_email') || '';
+let currentAudio = null;
+let currentPlayingEl = null;
+let currentFetchedEmails = []; // Store the structured email objects
+
+// ── Modal Logic ──
+function toggleModal(show) {
+  const modal = document.getElementById('settingsModal');
+  modal.classList.toggle('visible', show);
+  if (show) {
+    document.getElementById('emailInput').value = localStorage.getItem('klarity_email') || '';
+    document.getElementById('imapInput').value = localStorage.getItem('klarity_imap') || 'imap.gmail.com';
+    document.getElementById('passwordInput').value = localStorage.getItem('klarity_pass') || '';
+    checkGmailStatus();
+  }
+}
+
+async function checkGmailStatus() {
+  try {
+    const r = await fetch(`${API}/auth/gmail/status`);
+    const d = await r.json();
+    const txt = document.getElementById('gmailStatusText');
+    const btn = document.getElementById('connectGmailBtn');
+    if (d.connected) {
+      txt.innerHTML = '✅ Gmail: <span style="color:var(--green)">Connected</span>';
+      btn.innerText = 'Reconnect Gmail';
+      // Hide IMAP fields if Google is connected for a cleaner look
+      document.getElementById('imapInput').parentElement.style.display = 'none';
+      document.getElementById('passwordInput').parentElement.style.display = 'none';
+    } else {
+      txt.innerText = 'Gmail: Disconnected';
+      btn.innerText = 'Connect Gmail (Passwordless)';
+      document.getElementById('imapInput').parentElement.style.display = 'block';
+      document.getElementById('passwordInput').parentElement.style.display = 'block';
+    }
+  } catch (e) {
+    console.error('Status check fail', e);
+  }
+}
+
+async function connectGmail() {
+  try {
+    const r = await fetch(`${API}/auth/gmail`);
+    const d = await r.json();
+    if (d.url) {
+      window.open(d.url, '_blank');
+      showToast('Please sign in via the new tab.');
+    }
+  } catch (e) {
+    showToast('Failed to start Google login');
+  }
+}
+
+function saveSettings() {
+  const email = document.getElementById('emailInput').value.trim();
+  const imap = document.getElementById('imapInput').value.trim();
+  const pass = document.getElementById('passwordInput').value.trim();
+  
+  localStorage.setItem('klarity_email', email);
+  localStorage.setItem('klarity_imap', imap);
+  localStorage.setItem('klarity_pass', pass);
+  
+  toggleModal(false);
+  showToast('Settings saved!');
+}
+
+// ── Mode buttons ──
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+  });
+});
+
+// ── Dyslexia mode ──
+function toggleDyslexia(el) {
+  document.body.classList.toggle('dyslexia-mode', el.checked);
+}
+
+// ── Live score on type ──
+function onTextInput() {
+  currentFetchedEmails = []; // Clear email cache on manual edit
+  clearTimeout(liveDebounce);
+  const text = document.getElementById('inputText').value.trim();
+  if (text.length < 20) {
+    document.getElementById('liveBar').classList.remove('visible');
+    return;
+  }
+  liveDebounce = setTimeout(() => fetchLiveScore(text), 600);
+}
+
+async function fetchLiveScore(text) {
+  try {
+    const r = await fetch(`${API}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!r.ok) return;
+    const m = await r.json();
+    const bar = document.getElementById('liveBar');
+    bar.classList.add('visible');
+    document.getElementById('liveLabel').textContent = m.difficulty_label;
+    document.getElementById('liveLabel').style.color = m.difficulty_color;
+    const fill = document.getElementById('liveGaugeFill');
+    fill.style.width = Math.max(2, m.flesch_reading_ease) + '%';
+    fill.style.background = m.difficulty_color;
+    document.getElementById('liveGrade').textContent = `${m.flesch_reading_ease} / 100`;
+  } catch { /* silently skip */ }
+}
+
+// ── Health check ──
+async function checkHealth() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  txt.textContent = 'Checking…';
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    if (d.ollama === 'connected') {
+      dot.className = 'dot ok';
+      txt.textContent = `ASI1 ✓ (${d.provider || 'connected'})`;
+    } else throw new Error();
+  } catch {
+    dot.className = 'dot err';
+    txt.textContent = 'ASI1 offline';
+    showToast('ASI1 API not configured. Set ASI1_API_KEY env var.');
+  }
+}
+
+// ── Simplify ──
+async function simplify() {
+  const text = document.getElementById('inputText').value.trim();
+  if (!text) { showToast('Please paste some text first.'); return; }
+
+  const btn = document.getElementById('simplifyBtn');
+  const loader = document.getElementById('loader');
+  const rPanel = document.getElementById('result-panel');
+  const rdPanel = document.getElementById('readability-panel');
+
+  btn.disabled = true;
+  loader.classList.add('visible');
+  rPanel.classList.remove('visible');
+  rdPanel.classList.remove('visible');
+
+  try {
+    const res = await fetch(`${API}/simplify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        text: currentFetchedEmails.length ? null : text, 
+        emails: currentFetchedEmails.length ? currentFetchedEmails : null,
+        mode: currentMode 
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Server error');
+    }
+    const data = await res.json();
+    renderReadability(data.original_metrics, data.simplified_metrics);
+    renderResult(data);
+  } catch (e) {
+    showToast(e.message);
+  } finally {
+    btn.disabled = false;
+    loader.classList.remove('visible');
+  }
+}
+
+// ── Render readability comparison ──
+function renderReadability(orig, simp) {
+  // Fill "before" card
+  setFlesch('b', orig);
+  setMetrics('b', orig);
+
+  // Fill "after" card
+  setFlesch('a', simp);
+  setMetrics('a', simp);
+
+  // Improvement ribbon
+  const fleschDiff = (simp.flesch_reading_ease - orig.flesch_reading_ease).toFixed(1);
+  const gradeDiff  = (orig.flesch_kincaid_grade - simp.flesch_kincaid_grade).toFixed(1);
+  const wordsDiff  = orig.difficult_words - simp.difficult_words;
+  const sentDiff   = (orig.avg_sentence_length - simp.avg_sentence_length).toFixed(1);
+
+  document.getElementById('impFlesch').textContent  = (fleschDiff > 0 ? '+' : '') + fleschDiff;
+  document.getElementById('impGrade').textContent   = (gradeDiff  > 0 ? '−' : '+') + Math.abs(gradeDiff);
+  document.getElementById('impWords').textContent   = (wordsDiff  > 0 ? '−' : '+') + Math.abs(wordsDiff);
+  document.getElementById('impSentLen').textContent = (sentDiff   > 0 ? '−' : '+') + Math.abs(sentDiff);
+
+  document.getElementById('readability-panel').classList.add('visible');
+}
+
+function setFlesch(prefix, m) {
+  document.getElementById(prefix + 'Flesch').textContent = m.flesch_reading_ease;
+  document.getElementById(prefix + 'Flesch').style.color = m.difficulty_color;
+  document.getElementById(prefix + 'Label').textContent  = m.difficulty_label;
+  document.getElementById(prefix + 'Label').style.color  = m.difficulty_color;
+  const bar = document.getElementById(prefix + 'Bar');
+  setTimeout(() => {
+    bar.style.width      = Math.max(2, m.flesch_reading_ease) + '%';
+    bar.style.background = m.difficulty_color;
+  }, 80);
+}
+
+function setMetrics(p, m) {
+  document.getElementById(p + 'Grade').textContent   = m.flesch_kincaid_grade;
+  document.getElementById(p + 'Fog').textContent     = m.gunning_fog;
+  document.getElementById(p + 'Diff').textContent    = m.difficult_words;
+  document.getElementById(p + 'SentLen').textContent = m.avg_sentence_length;
+  document.getElementById(p + 'Syl').textContent     = m.avg_syllables_per_word;
+  document.getElementById(p + 'Coleman').textContent = m.coleman_liau_index;
+}
+
+// ── Render simplified bullets ──
+function renderResult(data) {
+  document.getElementById('summaryText').textContent = data.summary;
+  const summaryBox = document.getElementById('summaryBox');
+  summaryBox.onclick = () => speakText(data.summary, summaryBox);
+  document.getElementById('levelBadge').textContent  = data.reading_level;
+  document.getElementById('bulletCount').textContent = `${data.bullets.length} key points`;
+
+  const list = document.getElementById('bulletList');
+  list.innerHTML = '';
+  data.bullets.forEach((bullet, i) => {
+    const li = document.createElement('li');
+    li.className = 'bullet-item';
+    
+    // Check if source attribution exists
+    const sourceHtml = bullet.source 
+      ? `<div class="source-tag">From: ${escHtml(bullet.source)}</div>` 
+      : '';
+
+    li.innerHTML = `
+      <span class="bullet-num">${i + 1}</span>
+      <div style="flex:1">
+        <div style="line-height:1.5">${escHtml(bullet.text)}</div>
+        ${sourceHtml}
+      </div>
+      <button class="audio-btn" title="Read this point">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+      </button>`;
+    
+    // Clicking the row triggers audio
+    li.addEventListener('click', e => {
+      document.querySelectorAll('.bullet-item, .summary-box').forEach(el => el.classList.remove('highlight-line'));
+      li.classList.add('highlight-line');
+      speakText(bullet.text, li);
+    });
+    list.appendChild(li);
+  });
+
+  document.getElementById('result-panel').classList.add('visible');
+  
+  // Render Mermaid Map
+  const mapBox = document.getElementById('mapBox');
+  const container = document.getElementById('mermaidContainer');
+  if (data.map_mermaid && data.map_mermaid.includes('graph')) {
+    mapBox.style.display = 'block';
+    container.removeAttribute('data-processed');
+    container.textContent = data.map_mermaid;
+    mermaid.contentLoaded();
+  } else {
+    mapBox.style.display = 'none';
+  }
+
+  document.getElementById('readability-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── File Upload ──
+async function handleFileUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const btn = document.querySelector('.btn-upload');
+  const originalHtml = btn.innerHTML;
+  btn.innerHTML = 'Extracting...';
+  btn.disabled = true;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch(`${API}/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ detail: 'Unknown server error' }));
+      console.error('Upload Error Details:', errData);
+      throw new Error(errData.detail || `Upload failed with status ${res.status}`);
+    }
+    const data = await res.json();
+    console.log('Upload Success:', data.filename);
+    document.getElementById('inputText').value = data.text;
+    currentFetchedEmails = []; // Clear emails if document is uploaded
+    onTextInput();
+    showToast(`Successfully extracted text from ${data.filename}`);
+  } catch (e) {
+    console.error('Handled Upload Error:', e);
+    showToast(`Error: ${e.message}`);
+  } finally {
+    btn.innerHTML = originalHtml;
+    btn.disabled = false;
+    input.value = ''; // Reset input
+  }
+}
+
+// ── TTS ──
+async function speakText(text, el = null) {
+  // Stop existing audio if any
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  speechSynthesis.cancel();
+
+  // If we click the same element that is already playing, just stop it
+  if (currentPlayingEl === el && el !== null && el.classList.contains('playing')) {
+    el.classList.remove('playing');
+    currentPlayingEl = null;
+    return;
+  }
+
+  // Visual feedback
+  document.querySelectorAll('.playing').forEach(item => item.classList.remove('playing'));
+  if (el) {
+    el.classList.add('playing');
+    currentPlayingEl = el;
+  }
+
+  try {
+    const res = await fetch(`${API}/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!res.ok) throw new Error();
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    currentAudio = new Audio(url);
+    currentAudio.onended = () => {
+      if (el) el.classList.remove('playing');
+      currentPlayingEl = null;
+    };
+    currentAudio.play();
+  } catch {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.85;
+    u.onend = () => {
+      if (el) el.classList.remove('playing');
+      currentPlayingEl = null;
+    };
+    speechSynthesis.speak(u);
+  }
+}
+
+async function speakAll() {
+  const summary = document.getElementById('summaryText').textContent;
+  const bullets = [...document.querySelectorAll('#bulletList .bullet-item span[style]')].map(s => s.textContent);
+  await speakText(`Summary: ${summary}. Key points: ${bullets.join('. ')}`);
+}
+
+// ── Helpers ──
+function clearAll() {
+  document.getElementById('inputText').value = '';
+  document.getElementById('result-panel').classList.remove('visible');
+  document.getElementById('readability-panel').classList.remove('visible');
+  document.getElementById('liveBar').classList.remove('visible');
+  speechSynthesis.cancel();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+document.getElementById('inputText').addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') simplify();
+});
+
+// ── Email Fetching ──
+async function fetchMail() {
+    const email = localStorage.getItem('klarity_email');
+    const imap = localStorage.getItem('klarity_imap');
+    const pass = localStorage.getItem('klarity_pass');
+
+    // Check if Gmail is connected (from backend status)
+    const statusRes = await fetch(`${API}/auth/gmail/status`);
+    const statusData = await statusRes.json();
+
+    if (!statusData.connected && (!email || !imap || !pass)) {
+        showToast('Please configure email settings or connect Gmail first.');
+        toggleModal(true);
+        return;
+    }
+
+    const btn = document.getElementById('fetchMailBtn');
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Fetching...';
+    showToast('Fetching latest email...');
+
+    try {
+        const res = await fetch(`${API}/mail/fetch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, imap_server: imap, password: pass })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Failed to fetch email');
+        }
+
+        const data = await res.json();
+        const textarea = document.getElementById('inputText');
+        textarea.value = data.text;
+        currentFetchedEmails = data.emails || []; // Store structured data
+        onTextInput();
+        showToast('Email fetched!');
+    } catch (e) {
+        showToast(e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
+    }
+}
+
+window.addEventListener('load', () => setTimeout(checkHealth, 600));
+</script>
+</body>
+</html>
